@@ -1,0 +1,13 @@
+{
+  "results": [
+    {
+      "question": "is that a cute cat?",
+      "image_path": "./static/uploads/upload_image1.jpg",
+      "prediction": "Benign"
+    }
+  ],
+  "image_method": "none",
+  "text_method": "none",
+  "joint_method": "jointdetection",
+  "model_selected": "blip"
+}

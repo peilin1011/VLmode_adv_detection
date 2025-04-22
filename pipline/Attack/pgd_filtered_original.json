@@ -1,0 +1,1 @@
+{"question_id": 262148000, "original_question": "where is he looking?", "adversarial_question": "where is he looking !", "original_image_path": "adversarial_images/262148000_original.png", "adversarial_image_path": "adversarial_images/262148000_adversarial.png", "original_answer": "down", "adversarial_answer": "up", "attack_type": "image_text"}

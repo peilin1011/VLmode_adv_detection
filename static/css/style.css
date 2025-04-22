@@ -1,0 +1,49 @@
+/* styles.css */
+
+html, body {
+    height: 100%; /* 重要：为了使底部导航固定功能正常工作 */
+    margin: 0;
+    padding: 0;
+}
+
+.wrapper {
+    min-height: 100%;
+    margin-bottom: -60px; /* Equal to the footer's height */
+    padding-bottom: 60px; /* Equal to the footer's height */
+}
+.footer, .push {
+    height: 60px; /* Footer's height */
+}
+
+.container{
+    width: 30%;
+    margin-top: 0 em;
+}
+
+
+/* Gray background */
+.btn-primary {
+    background-color: #6c757d;
+    border-color: #007bff;
+    padding: 12px 25px;
+    border-radius: 30px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease;
+}
+
+/* Background color on hover and focus */
+.btn-primary:hover {
+    background-color: #5a6268;
+    border-color: #0056b3;
+}
+
+/* Width of the logo */
+.centered-logo {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 30%;
+}
+
+
+

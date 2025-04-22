@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>处理结果</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .card-img-top {
+      height: 220px;
+      object-fit: cover;
+    }
+    .info-bar {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body class="container py-4">
+
+  <h2 class="mb-4">🧠 模型处理结果预览</h2>
+
+  <!-- 显示检测参数 -->
+  <div class="info-bar">
+    <p><strong>图像检测方法:</strong> {{ image_method }}</p>
+    <p><strong>文本检测方法:</strong> {{ text_method }}</p>
+    <p><strong>联合检测方法:</strong> {{ joint_method }}</p>
+    <p><strong>使用模型:</strong> {{ model_selected }}</p>
+  </div>
+
+<!-- 图片 + 预测结果 -->
+<div class="row">
+  {% for item in results %}
+  <div class="col-md-4 mb-4">
+    <div class="card h-100 shadow-sm">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-bs-toggle="collapse" data-bs-target="#imgCollapse{{ loop.index }}" aria-expanded="false" aria-controls="imgCollapse{{ loop.index }}">
+          🖼️ 查看图片
+        </button>
+      </div>
+      <div id="imgCollapse{{ loop.index }}" class="collapse">
+        <img src="/{{ item.image_path }}" class="card-img-top" alt="图片">
+      </div>
+      <div class="card-body">
+        <h6>预测结果：</h6>
+        <p>{{ item.prediction }}</p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+
+
+  <!-- 返回按钮 -->
+  <div class="text-center mt-4">
+    <a href="{{ url_for('index') }}" class="btn btn-outline-primary">🔙 返回上传页面</a>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
