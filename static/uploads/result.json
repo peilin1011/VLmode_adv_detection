@@ -2,12 +2,15 @@
   "results": [
     {
       "question": "is that a cute cat?",
-      "image_path": "./static/uploads/upload_image1.jpg",
-      "prediction": "Benign"
+      "image_path": "./static/uploads/upload_74000_adversarial.png",
+      "prediction": "Text-Only Adversarial",
+      "processing_time": 7.4535
     }
   ],
-  "image_method": "none",
-  "text_method": "none",
+  "image_method": "feature_squeezing_2",
+  "text_method": "maskpure",
   "joint_method": "jointdetection",
-  "model_selected": "blip"
+  "model_selected": "llava",
+  "precision": null,
+  "recall": null
 }

@@ -5,6 +5,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 print(f'current work patth {current_dir}')
 sys.path.append(current_dir)
 
+import time
 import json
 import torch
 import numpy as np
@@ -24,12 +25,12 @@ import torch.backends.cudnn as cudnn
 import tqdm
 from transformers import AutoProcessor, LlavaForConditionalGeneration, BitsAndBytesConfig
 
-print("当前工作目录:", os.getcwd())
+print("Current working directory:", os.getcwd())
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-def load_json_data(file_path, transform, device, end_index):
+def load_json_data(file_path, transform, device, end_index, mode='inference'):
     data = []
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -37,27 +38,52 @@ def load_json_data(file_path, transform, device, end_index):
                 print(line)
                 line = line.strip()
                 if not line:
-                    continue  # Skip empty lines
-
+                    continue  
                 try:
                     json_obj = json.loads(line)
                 except json.JSONDecodeError as e:
                     logger.warning(f"Skipping invalid JSON line: {e}")
                     continue
-        
-                question = json_obj.get("question")
-                image_path = json_obj.get("image_path")
-                if not question or not image_path:
-                    logger.warning("Missing 'question' or 'image_path' in JSON line.")
-                    continue
-
-                new_filename = f"upload_{image_path}"
-                full_path = os.path.join("./static/uploads", new_filename)
-
-                image_tensor = load_image(full_path, transform, device)
-                if image_tensor is not None:
-                    data.append((image_tensor, question, full_path))
-
+                # for detct new adversarial example
+                if mode == 'inference':
+                    label = None
+                    question = json_obj.get("question")
+                    image_path = json_obj.get("image_path")
+                    if not question or not image_path:
+                        logger.warning("Missing 'question' or 'image_path' in JSON line.")
+                        continue
+                    new_filename = f"upload_{image_path}"
+                    full_path = os.path.join("./static/uploads", new_filename)
+                    print(full_path)
+                    image_tensor = load_image(full_path, transform, device)
+                    if image_tensor is not None:
+                        data.append((image_tensor, question, full_path, label))
+                # for test detection performance
+                elif mode == 'test':
+                    # for benign example
+                    original_question = json_obj.get("original_question")
+                    original_image_path = json_obj.get("original_image_path")
+                    label = 'benign'
+                    if not original_question or not original_image_path:
+                        logger.warning("Missing 'original_question' or 'original_image_path' in JSON line.")
+                        continue
+                    new_filename = f"upload_{original_image_path}"
+                    full_path = os.path.join("./static/uploads", new_filename)
+                    image_tensor = load_image(full_path, transform, device)
+                    if image_tensor is not None:
+                        data.append((image_tensor, original_question, full_path, label))
+                    # for adversarial example
+                    adversarial_question = json_obj.get("original_question")
+                    adversarial_image_path = json_obj.get("original_image_path")
+                    label = 'adversarial'
+                    if not original_question or not adversarial_image_path:
+                        logger.warning("Missing 'adversarial_question' or 'adversarial_image_path' in JSON line.")
+                        continue
+                    new_filename = f"upload_{adversarial_image_path}"
+                    full_path = os.path.join("./static/uploads", new_filename)
+                    image_tensor = load_image(full_path, transform, device)
+                    if image_tensor is not None:
+                        data.append((image_tensor, adversarial_question, full_path, label))
                 if len(data) == end_index:
                     break
     except Exception as e:
@@ -142,7 +168,7 @@ def detect_adversarial_image_example_1(image, question, answer_tokens, candidate
         return False, prediction
     elif VLModel_name.lower() == 'llava':
         prompt = format_llava_prompt(question)
-        inputs = processor(text=prompt, images=image, return_tensors="pt", do_rescale=False).to(vqa_model.device)
+        inputs = processor(text=prompt, images=compressed_image_1, return_tensors="pt", do_rescale=False).to(vqa_model.device)
         generate_ids = vqa_model.generate(**inputs, max_new_tokens=100)
         prediction = processor.batch_decode(generate_ids, skip_special_tokens=True)[0]
         if prediction != original_pred:
@@ -167,13 +193,14 @@ def detect_adversarial_image_example_2(image, question, answer_tokens, candidate
             prediction = candidate_answers[int(max_ids.cpu().numpy()[0])]
             distance = l2_distance(pro_softmax, pro_softmax_original)
             predictions.append(prediction)
-            distances.append(distance)
-        if distances[1] > threshold:
+            distances.append(distance.item())
+            print(distances)
+        if distances[1] > threshold or distances[0] > threshold:
             return True, prediction
         return False, prediction
     elif VLModel_name.lower() == 'llava':
         prompt = format_llava_prompt(question)
-        inputs = processor(text=prompt, images=image, return_tensors="pt", do_rescale=False).to(vqa_model.device)
+        inputs = processor(text=prompt, images=compressed_image_2, return_tensors="pt", do_rescale=False).to(vqa_model.device)
         generate_ids = vqa_model.generate(**inputs, max_new_tokens=100)
         prediction = processor.batch_decode(generate_ids, skip_special_tokens=True)[0]
         if prediction != original_pred:
@@ -211,7 +238,10 @@ def main(
     VLmodel_name='BLIP',                 # web input
     image_detector='feature_squeezing_1',# web input
     text_detector='makepure',            # web input
-    image_text_detector='jointdetection' # web input
+    image_text_detector='jointdetection', # web input
+    #mode = 'inference'          
+    mode = 'test'
+
 ):
     logger.info(f"Using device: {device}")
 
@@ -266,25 +296,28 @@ def main(
         transforms.Resize((480, 480)),
         transforms.ToTensor(),
     ])
-    dataset = load_json_data(data_file, transform, device, end_index=max_samples)
+    dataset = load_json_data(data_file, transform, device, end_index=max_samples,mode=mode)
     logger.info(f"Loaded {len(dataset)} samples.")
 
     adversarial_example_count = 0
     total_count = 0
     result_records = []
+    false_positive, true_positive, false_negative = 0, 0, 0
+    
+    precision, recall = 0, 0
 
-    for idx, (image, question, fullpath) in enumerate(dataset):
+    for idx, (image, question, fullpath, label) in enumerate(dataset):
         try:
             total_count += 1
             print('--------------------------------')
             print(f"Sample {total_count}:")
             print(f"  Question: {question}")
-            #print(f"  attack_type: {attack_type}")
-            #print(f"  Answer: {answer}")
+            start_time = time.time()
             record = {
                 "question": question,
                 "image_path": fullpath,
-                "prediction": None
+                "prediction": None,
+                "processing_time": None,
             }
 
             if VLmodel_name.lower() == 'blip':
@@ -327,9 +360,12 @@ def main(
                     raise ValueError(f"Unknown image_detector: {image_detector}")
 
             if is_adv_image:
-                adversarial_example_count += 1
+                adversarial_example_count += 1 
+                true_positive += int(label == 'adversarial')
+                false_positive += int(label == 'benign')
                 print(f"!!! Detected adversarial IMAGE example: {question}")
                 record["prediction"] = "Image-Only Adversarial"
+                record["processing_time"] = round(time.time() - start_time, 4)
                 result_records.append(record)
                 continue
 
@@ -344,8 +380,11 @@ def main(
 
             if is_adv_text:
                 adversarial_example_count += 1
+                true_positive += int(label == 'adversarial')
+                false_positive += int(label == 'benign')
                 print(f"!!! Detected adversarial TEXT example: {question}")
                 record['prediction'] = "Text-Only Adversarial"
+                record["processing_time"] = round(time.time() - start_time, 4)
                 result_records.append(record)
                 continue
 
@@ -360,14 +399,19 @@ def main(
 
             if is_adv_textandimage:
                 adversarial_example_count += 1
+                true_positive += int(label == 'adversarial')
+                false_positive += int(label == 'benign')
                 print(f"!!! Detected adversarial TEXT+IMAGE example: {question}")
                 record['prediction'] = "Text-Image-Joint Adversarial"
+                record["processing_time"] = round(time.time() - start_time, 4)
                 result_records.append(record)
                 continue
 
             # input is benign example
             print(f"Benign example: {question}")
+            false_negative += int(label=='benign')
             record['prediction'] = "Benign"
+            record["processing_time"] = round(time.time() - start_time, 4)
             result_records.append(record)
 
 
@@ -377,12 +421,22 @@ def main(
     logger.info("Classification completed.")
     print(f"Adversarial example count: {adversarial_example_count}/{total_count}")
 
+    if mode == 'test':
+        precision = true_positive / (true_positive + false_positive)
+        recall = true_positive / (true_positive +false_negative)
+    else:
+        precision = None
+        recall = None
+
+
     result_json = {
         'results': result_records,
         'image_method': image_detector,
         'text_method': text_detector,
         'joint_method': image_text_detector,
-        'model_selected': VLmodel_name
+        'model_selected': VLmodel_name,
+        'precision': precision,
+        'recall': recall
     }
     os.makedirs("../static/uploads", exist_ok=True)
     with open("./static/uploads/result.json", "w", encoding="utf-8") as f:
