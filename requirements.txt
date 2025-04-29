@@ -1,0 +1,17 @@
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+transformers>=4.25.0
+datasets
+scipy
+numpy
+tqdm
+flask
+Pillow
+ruamel.yaml
+bitsandbytes
+accelerate
+sentencepiece
+protobuf
+scikit-learn
+opencv-python

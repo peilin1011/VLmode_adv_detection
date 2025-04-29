@@ -1,0 +1,1 @@
+{"question_id": 262175001, "original_question": "where was the picture taken of the man?", "adversarial_question": "where was the picture taken of the man?", "original_image_path": "262175001_original.png", "adversarial_image_path": "262175001_adversarial.png", "original_answer": "forest", "adversarial_answer": "outside", "attack_type": "image"}
