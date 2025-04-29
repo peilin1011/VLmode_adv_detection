@@ -1,16 +1,22 @@
 {
   "results": [
     {
-      "question": "is that a cute cat?",
-      "image_path": "./static/uploads/upload_74000_adversarial.png",
+      "question": "where was the picture taken of the man?",
+      "image_path": "./static/uploads/upload_262175001_original.png",
       "prediction": "Text-Only Adversarial",
-      "processing_time": 7.4535
+      "processing_time": 0.6805
+    },
+    {
+      "question": "where was the picture taken of the man?",
+      "image_path": "./static/uploads/upload_262175001_adversarial.png",
+      "prediction": "Image-Only Adversarial",
+      "processing_time": 0.2043
     }
   ],
   "image_method": "feature_squeezing_2",
   "text_method": "maskpure",
   "joint_method": "jointdetection",
-  "model_selected": "llava",
-  "precision": null,
-  "recall": null
+  "model_selected": "blip",
+  "precision": 0.5,
+  "recall": 1.0
 }

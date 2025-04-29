@@ -18,73 +18,88 @@ from transformers import AutoModelForSequenceClassification, BertForMaskedLM, pi
 from ruamel.yaml import YAML
 from Defence.Text.models.blip_vqa import blip_vqa
 from Defence.Text.eval_utils import MaskDemaskWrapper, MaskDemaskWrapperLLaVA
+from pipline_utils import bit_depth_reduction, median_filtering, l2_distance
 from scipy.stats import entropy
 from scipy.ndimage import median_filter
 from transformers import BertTokenizer
 import torch.backends.cudnn as cudnn
 import tqdm
 from transformers import AutoProcessor, LlavaForConditionalGeneration, BitsAndBytesConfig
+from typing import Callable, Any, List, Tuple, Optional
 
-print("Current working directory:", os.getcwd())
+#print("Current working directory:", os.getcwd())
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
 logger = logging.getLogger(__name__)
 
-def load_json_data(file_path, transform, device, end_index, mode='inference'):
+def load_json_data(
+    file_path: str,
+    transform: Callable,
+    device: Any,
+    end_index: int,
+    mode: str = 'inference'
+) -> List[Tuple[Any, str, str, Optional[str]]]:
+
+    def process_entry(question: str, image_path: str, label: Optional[str]) -> Optional[Tuple[Any, str, str, Optional[str]]]:
+        if not question or not image_path:
+            logger.warning(f"Missing question or image_path for label: {label}")
+            return None
+        full_path = os.path.join("./static/uploads", f"upload_{image_path}")
+        image_tensor = load_image(full_path, transform, device)
+        if image_tensor is None:
+            return None
+        return (image_tensor, question, full_path, label)
+
     data = []
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            for line in tqdm.tqdm(f, desc="Loading JSON data"):
-                print(line)
+            for line in tqdm.tqdm(f, desc=f"Loading JSON data ({mode})"):
                 line = line.strip()
                 if not line:
-                    continue  
+                    continue
                 try:
                     json_obj = json.loads(line)
                 except json.JSONDecodeError as e:
                     logger.warning(f"Skipping invalid JSON line: {e}")
                     continue
-                # for detct new adversarial example
+
                 if mode == 'inference':
-                    label = None
-                    question = json_obj.get("question")
-                    image_path = json_obj.get("image_path")
-                    if not question or not image_path:
-                        logger.warning("Missing 'question' or 'image_path' in JSON line.")
-                        continue
-                    new_filename = f"upload_{image_path}"
-                    full_path = os.path.join("./static/uploads", new_filename)
-                    print(full_path)
-                    image_tensor = load_image(full_path, transform, device)
-                    if image_tensor is not None:
-                        data.append((image_tensor, question, full_path, label))
-                # for test detection performance
+                    result = process_entry(
+                        json_obj.get("question"),
+                        json_obj.get("image_path"),
+                        label=None
+                    )
+                    if result:
+                        data.append(result)
+
                 elif mode == 'test':
-                    # for benign example
-                    original_question = json_obj.get("original_question")
-                    original_image_path = json_obj.get("original_image_path")
-                    label = 'benign'
-                    if not original_question or not original_image_path:
-                        logger.warning("Missing 'original_question' or 'original_image_path' in JSON line.")
-                        continue
-                    new_filename = f"upload_{original_image_path}"
-                    full_path = os.path.join("./static/uploads", new_filename)
-                    image_tensor = load_image(full_path, transform, device)
-                    if image_tensor is not None:
-                        data.append((image_tensor, original_question, full_path, label))
-                    # for adversarial example
-                    adversarial_question = json_obj.get("original_question")
-                    adversarial_image_path = json_obj.get("original_image_path")
-                    label = 'adversarial'
-                    if not original_question or not adversarial_image_path:
-                        logger.warning("Missing 'adversarial_question' or 'adversarial_image_path' in JSON line.")
-                        continue
-                    new_filename = f"upload_{adversarial_image_path}"
-                    full_path = os.path.join("./static/uploads", new_filename)
-                    image_tensor = load_image(full_path, transform, device)
-                    if image_tensor is not None:
-                        data.append((image_tensor, adversarial_question, full_path, label))
-                if len(data) == end_index:
+                    # benign sample
+                    benign = process_entry(
+                        json_obj.get("original_question"),
+                        json_obj.get("original_image_path"),
+                        label="benign"
+                    )
+                    if benign:
+                        data.append(benign)
+
+                    # adversarial sample
+                    adv = process_entry(
+                        json_obj.get("adversarial_question"),
+                        json_obj.get("adversarial_image_path"),
+                        label="adversarial"
+                    )
+                    if adv:
+                        data.append(adv)
+
+                if len(data) >= end_index:
                     break
     except Exception as e:
         logger.error(f"Error loading dataset: {e}")
@@ -100,26 +115,6 @@ def load_image(image_path, transform, device):
         logger.error(f"Error loading image {image_path}: {e}")
         return None
 
-def bit_depth_reduction(image, bits=5, device='cuda:0'):
-    image = image.cpu().numpy()
-    image = np.round(image * (2 ** bits - 1)) / (2 ** bits - 1)
-    return torch.tensor(image).to(device)
-
-def median_filtering(image, kernel_size=2, device='cuda:0'):
-    image = image.cpu().numpy()
-    filtered_image = median_filter(image, size=(1, 1, kernel_size, kernel_size))
-    return torch.tensor(filtered_image).to(device)
-
-def l1_distance(x1, x2):
-    return torch.sum(torch.abs(x1 - x2))
-
-def l2_distance(x1, x2):
-    return torch.sqrt(torch.sum((x1 - x2) ** 2))
-
-def kl_divergence(x1, x2):
-    x1 = x1.cpu().detach().numpy()
-    x2 = x2.cpu().detach().numpy()
-    return entropy(x1.T, x2.T)
 
 def init_tokenizer():
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -312,6 +307,7 @@ def main(
             print('--------------------------------')
             print(f"Sample {total_count}:")
             print(f"  Question: {question}")
+            print(f"label: {label}")
             start_time = time.time()
             record = {
                 "question": question,
