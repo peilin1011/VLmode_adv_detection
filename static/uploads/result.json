@@ -1,70 +1,16 @@
 {
   "results": [
     {
-      "question": "is the boy playing baseball?",
-      "image_path": "./static/uploads/upload_131089004_original.png",
-      "prediction": "Benign",
-      "processing_time": 1.8212
-    },
-    {
       "question": "is the boy playing baseball !",
       "image_path": "./static/uploads/upload_131089004_adversarial.png",
       "prediction": "Image-Only Adversarial",
-      "processing_time": 0.2052
-    },
-    {
-      "question": "is this room decorated for the 1970s?",
-      "image_path": "./static/uploads/upload_262162006_original.png",
-      "prediction": "Benign",
-      "processing_time": 1.1476
-    },
-    {
-      "question": "is this room decorated for the 1970s?",
-      "image_path": "./static/uploads/upload_262162006_adversarial.png",
-      "prediction": "Image-Only Adversarial",
-      "processing_time": 0.2102
-    },
-    {
-      "question": "is there a person riding a bike?",
-      "image_path": "./static/uploads/upload_262197003_original.png",
-      "prediction": "Benign",
-      "processing_time": 1.1646
-    },
-    {
-      "question": "is there a person riding a bike?",
-      "image_path": "./static/uploads/upload_262197003_adversarial.png",
-      "prediction": "Image-Only Adversarial",
-      "processing_time": 0.2084
-    },
-    {
-      "question": "are the animals in the wild?",
-      "image_path": "./static/uploads/upload_393282004_original.png",
-      "prediction": "Benign",
-      "processing_time": 1.2583
-    },
-    {
-      "question": "are the animals in the wild ;",
-      "image_path": "./static/uploads/upload_393282004_adversarial.png",
-      "prediction": "Image-Only Adversarial",
-      "processing_time": 0.2007
-    },
-    {
-      "question": "what color is the man's jacket?",
-      "image_path": "./static/uploads/upload_393284015_original.png",
-      "prediction": "Benign",
-      "processing_time": 1.1584
-    },
-    {
-      "question": "what color is the man s his jacket?",
-      "image_path": "./static/uploads/upload_393284015_adversarial.png",
-      "prediction": "Image-Only Adversarial",
-      "processing_time": 0.2008
+      "processing_time": 0.2107
     }
   ],
   "image_method": "feature_squeezing_2",
   "text_method": "maskpure",
   "joint_method": "jointdetection",
   "model_selected": "blip",
-  "precision": 1.0,
-  "recall": 0.5
+  "precision": null,
+  "recall": null
 }

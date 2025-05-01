@@ -1,6 +1,6 @@
 import os
 import json
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_file
 from werkzeug.utils import secure_filename
 from pipline.pipline_pure import main
 
@@ -119,6 +119,38 @@ def show_result_test():
         recall=data['recall']
 
     )
+from io import BytesIO
+import csv
+
+@app.route('/download_csv')
+def download_csv():
+    folder_path = app.config['UPLOAD_FOLDER']
+    json_path = os.path.join(folder_path, 'result.json')
+
+    if not os.path.exists(json_path):
+        return "⚠️ Result not found", 404
+
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    # 创建 CSV 数据到内存中的 BytesIO
+    output = BytesIO()
+    # 写入 CSV 内容到一个字符串
+    csv_str = "Image Path,Question,Prediction,Processing Time\n"
+    for item in data['results']:
+        csv_str += f"{item.get('image_path','')},{item.get('question','')},{item.get('prediction','')},{item.get('processing_time','')}\n"
+    
+    # 编码为 UTF-8 并写入 BytesIO
+    output.write(csv_str.encode('utf-8'))
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='results.csv'
+    )
+
 
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
