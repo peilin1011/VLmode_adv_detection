@@ -132,6 +132,7 @@ def initialize_model_and_tokenizer(config, device):
         vit_grad_ckpt=config['vit_grad_ckpt'],
         vit_ckpt_layer=config['vit_ckpt_layer']
     ).to(device)
+    vqa_model.eval()
     return vqa_model, text_tokenizer
 
 def initialize_masked_lm(bert_model_name, device):
@@ -164,7 +165,14 @@ def detect_adversarial_image_example_1(image, question, answer_tokens, candidate
     elif VLModel_name.lower() == 'llava':
         prompt = format_llava_prompt(question)
         inputs = processor(text=prompt, images=compressed_image_1, return_tensors="pt", do_rescale=False).to(vqa_model.device)
-        generate_ids = vqa_model.generate(**inputs, max_new_tokens=100)
+        # generate_ids = vqa_model.generate(**inputs, max_new_tokens=100)
+        generate_ids = vqa_model.generate(
+            **inputs,
+            max_new_tokens=100,
+            do_sample=False,
+            temperature=0.0,
+            top_k=1
+        )
         prediction = processor.batch_decode(generate_ids, skip_special_tokens=True)[0]
         if prediction != original_pred:
             return True, prediction
@@ -232,7 +240,7 @@ def main(
     #VLmodel_name='LLaVA',
     VLmodel_name='BLIP',                 # web input
     image_detector='feature_squeezing_1',# web input
-    text_detector='makepure',            # web input
+    text_detector='maskpure',            # web input
     image_text_detector='jointdetection', # web input
     #mode = 'inference'          
     mode = 'test'
@@ -263,6 +271,7 @@ def main(
             quantization_config=bnb_config,
             device_map="auto"
         )
+        vqa_model.eval()
         text_tokenizer = processor.tokenizer
     logger.info(f"Model and tokenizer of {VLmodel_name} loaded successfully.")
 
@@ -388,7 +397,7 @@ def main(
             if image_text_detector.lower() != 'none':
                 if image_text_detector.lower() == 'jointdetection':
                     is_adv_textandimage = detect_adversarial_textandimage_example(ag_wrapper, predict_origi, question, image)
-                elif image_text_detector.lowe() == 'none':
+                elif image_text_detector.lower() == 'none':
                     continue
                 else:
                     raise ValueError(f"Unknown image_text_detector: {image_text_detector}")
@@ -405,7 +414,7 @@ def main(
 
             # input is benign example
             print(f"Benign example: {question}")
-            false_negative += int(label=='benign')
+            false_negative += int(label == 'adversarial')
             record['prediction'] = "Benign"
             record["processing_time"] = round(time.time() - start_time, 4)
             result_records.append(record)
