@@ -52,7 +52,7 @@ def load_json_data(
         if not question or not image_path:
             logger.warning(f"Missing question or image_path for label: {label}")
             return None
-        full_path = os.path.join("./static/uploads", f"upload_{image_path}")
+        full_path = os.path.join("./static/uploads", f"{image_path}")
         image_tensor = load_image(full_path, transform, device)
         if image_tensor is None:
             return None
@@ -105,7 +105,6 @@ def load_json_data(
         logger.error(f"Error loading dataset: {e}")
 
     return data
-
 
 def load_image(image_path, transform, device):
     try:
@@ -164,16 +163,11 @@ def detect_adversarial_image_example_1(image, question, answer_tokens, candidate
         return False, prediction
     elif VLModel_name.lower() == 'llava':
         prompt = format_llava_prompt(question)
-        inputs = processor(text=prompt, images=compressed_image_1, return_tensors="pt", do_rescale=False).to(vqa_model.device)
-        # generate_ids = vqa_model.generate(**inputs, max_new_tokens=100)
-        generate_ids = vqa_model.generate(
-            **inputs,
-            max_new_tokens=100,
-            do_sample=False,
-            temperature=0.0,
-            top_k=1
-        )
-        prediction = processor.batch_decode(generate_ids, skip_special_tokens=True)[0]
+        inputs = processor(text=prompt, images=compressed_image_2, return_tensors="pt", do_rescale=False).to(vqa_model.device)
+        outputs = vqa_model.generate(**inputs, max_new_tokens=100)
+        decoded = processor.batch_decode(outputs, skip_special_tokens=True)[0]
+        answer_part = decoded.split("<|assistant|>")[-1].strip()
+        prediction= answer_part.split()[0]
         if prediction != original_pred:
             return True, prediction
         return False, prediction
@@ -203,15 +197,22 @@ def detect_adversarial_image_example_2(image, question, answer_tokens, candidate
         return False, prediction
     elif VLModel_name.lower() == 'llava':
         prompt = format_llava_prompt(question)
+        print(f'prompt is {prompt}')
         inputs = processor(text=prompt, images=compressed_image_2, return_tensors="pt", do_rescale=False).to(vqa_model.device)
-        generate_ids = vqa_model.generate(**inputs, max_new_tokens=100)
-        prediction = processor.batch_decode(generate_ids, skip_special_tokens=True)[0]
+        outputs = vqa_model.generate(**inputs, max_new_tokens=100)
+        decoded = processor.batch_decode(outputs, skip_special_tokens=True)[0]
+        print(f"Decoded output: [{decoded}]")
+        answer_part = decoded.split("<|assistant|>")[-1].strip()
+        print(f'answer part {answer_part}')
+        prediction= answer_part.split()[0]
+        print(f'prediction of image:{prediction}, original Prediction:{original_pred}')
         if prediction != original_pred:
             return True, prediction
         return False, prediction
 
 def detect_adversarial_text_example(ag_wrapper, predict_origi, question, image):
     prediction_text = ag_wrapper([question], [image])
+    print(f'original answer {predict_origi}, prediction of text {prediction_text}')
     if prediction_text != predict_origi:
         return True, prediction_text
     return False, prediction_text
@@ -226,7 +227,9 @@ def detect_adversarial_textandimage_example(ag_wrapper, predict_origi, question,
     return False
 
 def format_llava_prompt(question: str) -> str:
-    return f"USER: <image>\n{question.strip()} Answer with one word only.\nASSISTANT:"
+    return f"<|user|>\n<image>\n\n{question.strip()} (Answer with one word only)\n\n<|assistant|>"
+
+
 
 def main(
     config_path='./pipline/configs/vqa.yaml',
@@ -291,10 +294,7 @@ def main(
         )
     elif VLmodel_name.lower() == 'llava':
         ag_wrapper = MaskDemaskWrapperLLaVA(
-            vqa_model, processor, num_voter, mask_pct, 'generate', 
-            answer_tokens, candidate_answers, max_new_tokens=10, 
-            fill_mask=ag_fill_mask
-        )
+            vqa_model, processor, num_voter=3, mask_pct=0.1)
 
     transform = transforms.Compose([
         transforms.Resize((480, 480)),
@@ -338,9 +338,13 @@ def main(
             elif VLmodel_name.lower() == 'llava':
                 prompt = format_llava_prompt(question)
                 inputs = processor(text=prompt, images=image, return_tensors="pt", do_rescale=False).to(vqa_model.device)
-                generate_ids = vqa_model.generate(**inputs, max_new_tokens=100)
-                predict_origi = processor.batch_decode(generate_ids, skip_special_tokens=True)[0]
-
+                outputs = vqa_model.generate(**inputs, max_new_tokens=100)
+                decoded = processor.batch_decode(outputs, skip_special_tokens=True)[0]
+                answer_part = decoded.split("<|assistant|>")[-1].strip()
+                print(f'-----answer part{answer_part}-------')
+                predict_origi = answer_part.split()[0]
+                print(f'---------orogianl {predict_origi}--------')
+                
             is_adv_image = False
             if image_detector.lower() != 'none':
                 if image_detector == 'feature_squeezing_1':

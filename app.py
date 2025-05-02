@@ -35,7 +35,7 @@ def upload():
     if folder_files and any(f.filename.endswith('.json') for f in folder_files):
         for file in folder_files:
             filename = secure_filename(os.path.basename(file.filename))
-            filename = f"upload_{filename}"
+            #filename = f"upload_{filename}"
             save_path = os.path.join(folder_path, filename)
             file.save(save_path)
             if file.filename.endswith('.json'):
@@ -45,6 +45,7 @@ def upload():
     elif image_files:
         for file in image_files:
             filename = secure_filename(os.path.basename(file.filename))
+            filename = f"upload_{filename}"
             save_path = os.path.join(folder_path, filename)
             file.save(save_path)
 

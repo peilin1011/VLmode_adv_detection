@@ -3,6 +3,7 @@ import numpy as np
 import random
 from nltk.tokenize import word_tokenize
 from transformers import pipeline
+from nltk import pos_tag
 
 def mask_and_demask(
     filtered_dataset_text,
@@ -120,3 +121,56 @@ def mask_and_demask(
                     print(f"[Index {idx} replaced]: {final_sentence}")
 
     return modified_adv_texts
+
+
+def mask_and_demask_llava(
+    text_list,
+    num_voter=5,
+    mask_pct=0.3,
+    pos_weights=None,
+    verbose=False
+):
+    """
+    LLaVA-compatible version of mask_and_demask.
+    Randomly perturbs words in questions for robustness testing.
+
+    Returns:
+        List of perturbed questions (flat list).
+    """
+    nltk.download("punkt", quiet=True)
+    nltk.download("averaged_perceptron_tagger", quiet=True)
+
+    all_variants = []
+
+    for text in text_list:
+        tokens = word_tokenize(text)
+        pos_tags = pos_tag(tokens)
+
+        weights = np.ones(len(tokens))
+        if pos_weights:
+            for i, (_, tag) in enumerate(pos_tags):
+                if tag in pos_weights:
+                    weights[i] = pos_weights[tag]
+        weights /= weights.sum()
+
+        for _ in range(num_voter):
+            perturbed = tokens[:]
+            n_to_perturb = max(1, int(len(tokens) * mask_pct))
+            indices = np.random.choice(len(tokens), n_to_perturb, replace=False, p=weights)
+
+            for i in indices:
+                word = perturbed[i]
+                if len(word) > 3:
+                    perturbed[i] = word[::-1]  # simple reverse as perturbation
+                else:
+                    perturbed[i] = random.choice(["the", "a", "this", "it"])
+
+            final = " ".join(perturbed)
+            all_variants.append(final)
+
+            if verbose:
+                print(f"Original: {text}")
+                print(f"Variant : {final}")
+                print("-" * 40)
+
+    return all_variants

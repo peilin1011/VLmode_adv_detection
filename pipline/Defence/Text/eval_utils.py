@@ -60,33 +60,28 @@ class MaskDemaskWrapper(ModelWrapper):
         return most_common_answer
 
 
-import torch
-
 class MaskDemaskWrapperLLaVA(ModelWrapper):
-    def __init__(self, model, processor, num_voter, mask_pct, inference, 
-                 answer_tokens=None, candidate_answers=None, max_new_tokens=10, fill_mask=None):
-        self.model = model  # LLaVA model (LlavaForConditionalGeneration)
-        self.processor = processor  # AutoProcessor
+    def __init__(self, model, processor, num_voter, mask_pct, 
+                 answer_tokens=None, candidate_answers=None, max_new_tokens=10):
+        self.model = model
+        self.processor = processor
         self.num_voter = num_voter
         self.mask_pct = mask_pct
-        self.inference = inference  # 'generate' or 'rank'
         self.answer_tokens = answer_tokens
         self.candidate_answers = candidate_answers
         self.max_new_tokens = max_new_tokens
-        self.fill_mask = fill_mask
 
     def __call__(self, text_input_list, images_list):
-
-        filled = mask_and_demask(
+        # Generate perturbed variants
+        filled = mask_and_demask_llava(
             text_input_list,
-            tokenizer=self.processor.tokenizer,
-            fill_mask=self.fill_mask,
-            verbose=True,
             num_voter=self.num_voter,
             mask_pct=self.mask_pct,
-            use_random_mask=True
+            verbose=True
         )
-
+        
+        #print(f'.......variant: {filled}-----------')
+        # Align images to match the number of texts
         images_list = images_list * (len(filled) // len(images_list) + 1)
         images_list = images_list[:len(filled)]
 
@@ -94,11 +89,29 @@ class MaskDemaskWrapperLLaVA(ModelWrapper):
 
         for text, image in zip(filled, images_list):
             prompt = format_llava_prompt(text)
+            #print(f"[LLaVA Prompt] {prompt}")
+
             inputs = self.processor(
-                text=prompt, images=image, return_tensors="pt", do_rescale=False
+                text=prompt,
+                images=image,
+                return_tensors="pt",
+                do_rescale=False
             ).to(self.model.device)
 
             outputs = self.model.generate(**inputs, max_new_tokens=self.max_new_tokens)
             decoded = self.processor.batch_decode(outputs, skip_special_tokens=True)[0]
-            one_word = decoded.strip().split()[0]  # Get the first word
-            all
+
+            if "ASSISTANT:" in decoded:
+                answer_part = decoded.split("ASSISTANT:")[-1].strip()
+            else:
+                answer_part = decoded.strip()
+            
+            first_word = answer_part.split()[0]
+            all_answers.append(first_word)
+
+        # Majority vote
+        answer_counts = Counter(all_answers)
+        most_common = answer_counts.most_common(1)[0][0]
+        print(f"[Answer Counts] {answer_counts}")
+
+        return most_common

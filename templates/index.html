@@ -28,7 +28,6 @@
       gap: 10px;
     }
 
-    /* Fullscreen Loading Overlay */
     #loadingOverlay {
       position: fixed;
       top: 0;
@@ -129,7 +128,7 @@
       <!-- Submit & Reset Buttons -->
       <div class="btn-group mt-3">
         <button type="submit" class="btn btn-outline-primary" id="submitButton">🚀 Submit</button>
-        <button type="button" class="btn btn-outline-danger" onclick="resetForm()">🔄 Upload Again</button>
+        <button type="reset" class="btn btn-outline-danger" onclick="resetForm()">🔄 Upload Again</button>
       </div>
     </form>
   </div>
@@ -150,10 +149,11 @@
   const imageInput = document.getElementById('imageInput');
   const folderInput = document.getElementById('folderInput');
   const textInputContainer = document.getElementById('textInputContainer');
+  const textInput = document.getElementById('textInput');
   const loadingOverlay = document.getElementById('loadingOverlay');
   const modeSelect = document.getElementById('modeSelect');
+  const submitButton = document.getElementById('submitButton');
 
-  // Show/hide text input based on file upload
   imageInput.addEventListener('change', () => {
     if (imageInput.files.length > 0) {
       textInputContainer.classList.remove('hidden');
@@ -167,12 +167,16 @@
     if (folderInput.files.length > 0) {
       textInputContainer.classList.add('hidden');
       imageInput.value = '';
+
+      const hasJson = Array.from(folderInput.files).some(file => file.name.endsWith('.json'));
+      if (!hasJson) {
+        alert("Please include a JSON file in the folder for test mode.");
+      }
     }
   });
 
-  // Disable image input in test mode
   modeSelect.addEventListener('change', () => {
-    if (modeSelect.value === 'test(data with label)') {
+    if (modeSelect.value === 'test') {
       imageInput.disabled = true;
       imageInput.classList.add('disabled');
       imageInput.value = '';
@@ -183,25 +187,26 @@
     }
   });
 
-  // Show loading overlay on form submit
-  form.addEventListener('submit', function () {
+  form.addEventListener('submit', function (e) {
+    // Validate text input if image is uploaded
+    if (imageInput.files.length > 0 && textInput.value.trim() === '') {
+      e.preventDefault();
+      alert('Please enter accompanying text for the uploaded image(s).');
+      return;
+    }
+
+    submitButton.disabled = true;
     loadingOverlay.style.display = 'flex';
   });
 
-  // Reset form functionality
   function resetForm() {
     form.reset();
-
-    // Clear file inputs manually
     imageInput.value = '';
     folderInput.value = '';
-
-    // Hide the text input container
     textInputContainer.classList.add('hidden');
-
-    // Re-enable image input if disabled
     imageInput.disabled = false;
     imageInput.classList.remove('disabled');
+    submitButton.disabled = false;
   }
 </script>
 
