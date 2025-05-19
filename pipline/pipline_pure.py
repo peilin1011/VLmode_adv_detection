@@ -337,9 +337,11 @@ def main(
                 predict_origi = candidate_answers[int(max_ids.cpu().numpy()[0])]
             elif VLmodel_name.lower() == 'llava':
                 prompt = format_llava_prompt(question)
+                print(f'prompt{prompt}')
                 inputs = processor(text=prompt, images=image, return_tensors="pt", do_rescale=False).to(vqa_model.device)
                 outputs = vqa_model.generate(**inputs, max_new_tokens=100)
                 decoded = processor.batch_decode(outputs, skip_special_tokens=True)[0]
+                print(f'decoded {decoded}')
                 answer_part = decoded.split("<|assistant|>")[-1].strip()
                 print(f'-----answer part{answer_part}-------')
                 predict_origi = answer_part.split()[0]

@@ -1,40 +1,16 @@
 {
   "results": [
     {
-      "question": "how many photos can you see?",
-      "image_path": "./static/uploads/393226001_original.png",
-      "prediction": "Benign",
-      "processing_time": 1.1194
-    },
-    {
-      "question": "how many photo's can you see !",
-      "image_path": "./static/uploads/393226001_adversarial.png",
-      "prediction": "Text-Only Adversarial",
-      "processing_time": 0.4961
-    },
-    {
       "question": "what is the child eating?",
       "image_path": "./static/uploads/393243001_original.png",
       "prediction": "Benign",
-      "processing_time": 1.136
+      "processing_time": 1.1324
     },
     {
       "question": "what is the child eating?",
       "image_path": "./static/uploads/393243001_adversarial.png",
       "prediction": "Image-Only Adversarial",
-      "processing_time": 0.2041
-    },
-    {
-      "question": "is there a person riding bikes?",
-      "image_path": "./static/uploads/262197003_original.png",
-      "prediction": "Benign",
-      "processing_time": 1.133
-    },
-    {
-      "question": "is there a person riding a bike!",
-      "image_path": "./static/uploads/262197003_adversarial.png",
-      "prediction": "Text-Image-Joint Adversarial",
-      "processing_time": 1.1563
+      "processing_time": 0.2083
     }
   ],
   "image_method": "feature_squeezing_2",
