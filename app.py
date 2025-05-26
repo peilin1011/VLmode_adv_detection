@@ -3,6 +3,7 @@ import json
 from flask import Flask, render_template, request, redirect, url_for, send_file
 from werkzeug.utils import secure_filename
 from pipline.pipline_pure import main
+import requests
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'static/uploads'
@@ -134,14 +135,14 @@ def download_csv():
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    # 创建 CSV 数据到内存中的 BytesIO
+ 
     output = BytesIO()
-    # 写入 CSV 内容到一个字符串
+
     csv_str = "Image Path,Question,Prediction,Processing Time\n"
     for item in data['results']:
         csv_str += f"{item.get('image_path','')},{item.get('question','')},{item.get('prediction','')},{item.get('processing_time','')}\n"
     
-    # 编码为 UTF-8 并写入 BytesIO
+
     output.write(csv_str.encode('utf-8'))
     output.seek(0)
 
@@ -154,5 +155,21 @@ def download_csv():
 
 
 if __name__ == '__main__':
+    print(f'configing...')
+    url = "https://huggingface.co/peilin1011/vqa/resolve/main/model_vqa.pth"
+
+    save_dir = "pipline/model"
+    os.makedirs(save_dir, exist_ok=True)  
+    save_path = os.path.join(save_dir, "model_vqa.pth")
+
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(save_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print(f"model is downloaded: {save_path}")
+    else:
+        print(f"download model fails, error: {response.status_code}")
+
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     app.run(debug=True)
