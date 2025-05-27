@@ -4,13 +4,13 @@
       "question": "what is the child eating?",
       "image_path": "./static/uploads/393243001_original.png",
       "prediction": "Benign",
-      "processing_time": 1.1324
+      "processing_time": 1.7113
     },
     {
       "question": "what is the child eating?",
       "image_path": "./static/uploads/393243001_adversarial.png",
       "prediction": "Image-Only Adversarial",
-      "processing_time": 0.2083
+      "processing_time": 0.1999
     }
   ],
   "image_method": "feature_squeezing_2",
